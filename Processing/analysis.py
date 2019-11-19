@@ -18,7 +18,7 @@ def read_qualisys(filename,off):
     'Read 6DOF data from the qualisys file'
     cNames = ['q_'+str(i+1) for i in range(6)]
     df = pd.read_csv(filename,sep='\t',header=11,usecols=[off+i for i in range(6)],names=cNames)
-    df.loc[:,cNames[:5]] /= 1000    
+    df.loc[:,cNames[:5]] /= 1000
     df['time'] = np.arange(len(df.q_1))*0.01
     return df
 def read_smarty(filename): return read_qualisys(filename,19) # check consistency with QUalisys data
@@ -59,6 +59,41 @@ def take_FFT(df,tname='time'):
     for col in df:                             # loop through the columns ...
         if(col == tname): continue                # ... other than time
         hat_df[col] = abs(np.fft.rfft(df[col])/n) # ... and take FFT
+    return hat_df
+
+def take_welch(df,tname='time',nseg=1):
+    """
+    Compute the Fast Fourier Transform (FFT) of a data-frame using Welch's method.
+    The time series is split into (90% overlapping) segments to remove noise from the FFT.
+
+    See https://docs.scipy.org/doc/scipy-0.14.0/reference/generated/scipy.signal.welch.html
+
+    Parameters
+    ----------
+    df : DataFrame
+        Time series of measurements values
+    tname : str
+        Name of the time column of df. Defaults to 'time'.
+    nseg : int
+        Number of segments to split the series into.
+        Defaults to 1, meaning the FFT is not de-noised.
+
+    Returns
+    -------
+    hat_df : DataFrame
+        Frequency and abs(FFT) of the non-time measurements
+
+    """
+
+    hat_df = pd.DataFrame()                    # make empty data frame
+    T = df[tname].max()-df[tname].min()        # signal period
+    for col in df:                             # loop through the columns ...
+        if(col == tname): continue                # ... other than time
+        hat_df['freq'],P = signal.welch(df[col],fs=len(df)/T,           # sample frequency
+                                        nperseg=int(len(df)/nseg),      # length of segments
+                                        noverlap=int(len(df)/nseg*0.9), # length of overlap
+                                        scaling='spectrum')             # don't scale by f
+        hat_df[col] = np.sqrt(2*P)             # invert from spectrum to abs(FFT)
     return hat_df
 
 def signal_stats(df,var,tname='time'):
