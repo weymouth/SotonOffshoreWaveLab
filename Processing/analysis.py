@@ -21,8 +21,8 @@ def read_qualisys(filename,off):
     df.loc[:,cNames[:5]] /= 1000    
     df['time'] = np.arange(len(df.q_1))*0.01
     return df
-def read_smarty(filename): return read_qualisys(filename,17)
-def read_moored(filename): return read_qualisys(filename,0)
+def read_smarty(filename): return read_qualisys(filename,19) # check consistency with QUalisys data
+def read_moored(filename): return read_qualisys(filename,2)
 
 def read_moored_strain(filename):
     df = pd.read_csv(filename,names=['time','voltage'],header=0)
