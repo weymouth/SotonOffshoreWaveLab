@@ -61,7 +61,7 @@ def take_FFT(df,tname='time'):
         hat_df[col] = abs(np.fft.rfft(df[col])/n) # ... and take FFT
     return hat_df
 
-def take_welch(df,tname='time',nseg=1):
+def take_welch(df,tname='time',nseg=1,delf=None):
     """
     Compute the Fast Fourier Transform (FFT) of a data-frame using Welch's method.
     The time series is split into (90% overlapping) segments to remove noise from the FFT.
@@ -72,11 +72,13 @@ def take_welch(df,tname='time',nseg=1):
     ----------
     df : DataFrame
         Time series of measurements values
-    tname : str
+    tname : str, optional
         Name of the time column of df. Defaults to 'time'.
-    nseg : int
+    nseg : int, optional
         Number of segments to split the series into.
         Defaults to 1, meaning the FFT is not de-noised.
+    delf : float, optional
+        Desired frequency resolution of the FFT. Defaults to None.
 
     Returns
     -------
@@ -87,12 +89,14 @@ def take_welch(df,tname='time',nseg=1):
 
     hat_df = pd.DataFrame()                    # make empty data frame
     T = df[tname].max()-df[tname].min()        # signal period
+    fs = len(df)/T                             # sample frequency
+    nperseg = int(len(df)/nseg)                # length of segments
+    if delf: nperseg = int(len(df)/delf/T)     # use desired delta f instead
+    noverlap = int(nperseg*0.9)                # length of overlap
+    scaling = 'spectrum'                       # don't scale by f
     for col in df:                             # loop through the columns ...
         if(col == tname): continue                # ... other than time
-        hat_df['freq'],P = signal.welch(df[col],fs=len(df)/T,           # sample frequency
-                                        nperseg=int(len(df)/nseg),      # length of segments
-                                        noverlap=int(len(df)/nseg*0.9), # length of overlap
-                                        scaling='spectrum')             # don't scale by f
+        hat_df['freq'],P = signal.welch(df[col],fs=fs,nperseg=nperseg,noverlap=noverlap,scaling=scaling)
         hat_df[col] = np.sqrt(2*P)             # invert from spectrum to abs(FFT)
     return hat_df
 
